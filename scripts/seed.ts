@@ -1,9 +1,7 @@
-import { SQL } from 'bun'
 import { fileURLToPath } from 'node:url'
+import { createDatabase } from '#/infrastructure/db.ts'
 
-const sql = new SQL(
-  process.env.DATABASE_URL ?? 'postgres://events:events@localhost:55432/events',
-)
+const { sql } = createDatabase(process.env.DATABASE_URL)
 try {
   await sql.file(fileURLToPath(new URL('../sql/seed.sql', import.meta.url)))
   console.log('Seed applied')

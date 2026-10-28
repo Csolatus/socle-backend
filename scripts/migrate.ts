@@ -1,13 +1,10 @@
-import { SQL } from 'bun'
 import { fileURLToPath } from 'node:url'
-import { drizzle } from 'drizzle-orm/bun-sql'
 import { migrate } from 'drizzle-orm/bun-sql/migrator'
+import { createDatabase } from '#/infrastructure/db.ts'
 
-const sql = new SQL(
-  process.env.DATABASE_URL ?? 'postgres://events:events@localhost:55432/events',
-)
+const { sql, db } = createDatabase(process.env.DATABASE_URL)
 try {
-  await migrate(drizzle({ client: sql }), {
+  await migrate(db, {
     migrationsFolder: fileURLToPath(new URL('../drizzle', import.meta.url)),
   })
   console.log('Migrations applied')
