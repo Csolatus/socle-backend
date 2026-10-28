@@ -3,8 +3,8 @@ import { createServices } from '#/application/services.ts'
 import { createDatabase } from '#/infrastructure/db.ts'
 import { PostgresEventRepository } from '#/infrastructure/postgres-event-repository.ts'
 
-const { sql } = createDatabase(process.env.DATABASE_URL)
-const repository = new PostgresEventRepository(sql)
+const { sql, db } = createDatabase(process.env.DATABASE_URL)
+const repository = new PostgresEventRepository(db)
 const services = createServices(repository)
 const port = Number(process.env.PORT ?? 3000)
 const app = createApp(services, {

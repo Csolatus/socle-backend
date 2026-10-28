@@ -144,7 +144,7 @@ or `_tag: 'Failure'`. Event creation, capacity checks, updates, reservation and 
 return results rather than throwing expected errors.
 
 `Option<Value>` represents absence using `None` and `Some`. Repository lookups return
-`Option<Event>`. Both domain `cancelledAt` and persistence-entity `cancelled_at` use
+`Option<Event>`. Both domain and persistence-entity `cancelledAt` use
 `Option<Date>`. SQL row decoding converts `NULL` to `None`; SQL writes convert it back
 only at the driver boundary. JSON responses expose a timestamp or `null` as a wire contract.
 
@@ -155,8 +155,8 @@ Invalid response DTOs or corrupt stored data are server failures, not invalid cl
 
 ### Persistence
 
-`EventData` is camelCase domain state. `EventEntity` is the PostgreSQL representation.
-Reservation entities decode database absence into Option. Explicit mappers keep these
+`EventData` is camelCase domain state. `EventEntity` is the row type inferred from the
+Drizzle schema (`$inferSelect`). Reservation entities decode database absence into Option. Explicit mappers keep these
 representations separate from public DTOs.
 
 `PostgresEventRepository` locks the event row before counting active reservations and
