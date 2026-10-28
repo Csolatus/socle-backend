@@ -44,7 +44,9 @@ export const inMemoryImplementation: RepositoryImplementation = {
   },
 }
 
-export function postgresImplementation(url: string | undefined): RepositoryImplementation {
+export function postgresImplementation(
+  url: string | undefined,
+): RepositoryImplementation {
   let database: ReturnType<typeof createDatabase> | undefined
   return {
     name: 'Postgres',
@@ -60,7 +62,12 @@ export function postgresImplementation(url: string | undefined): RepositoryImple
         (${bob}, 'Bob', ${`bob-${bob}@test.local`})`
       await sql`INSERT INTO venues (id, name, address)
         VALUES (${venueId}, 'Test venue', '1 rue du Test')`
-      return { alice, bob, venueId, repository: new PostgresEventRepository(db) }
+      return {
+        alice,
+        bob,
+        venueId,
+        repository: new PostgresEventRepository(db),
+      }
     },
     async close() {
       await database?.sql.close()
