@@ -13,7 +13,10 @@ import {
 } from './support/repository-fixtures.ts'
 
 const postgres = postgresImplementation(testDatabaseUrl)
-const implementations: RepositoryImplementation[] = [inMemoryImplementation, postgres]
+const implementations: RepositoryImplementation[] = [
+  inMemoryImplementation,
+  postgres,
+]
 
 afterAll(async () => {
   await postgres.close?.()
@@ -34,7 +37,9 @@ for (const implementation of implementations) {
       const reserveFor =
         (userId: UserId, eventId: EventId, quantity = 1) =>
         (repository: Awaited<ReturnType<typeof setup>>['repository']) =>
-          repository.reserve(eventId, () => Result.succeed(aReservation(eventId, userId, quantity)))
+          repository.reserve(eventId, () =>
+            Result.succeed(aReservation(eventId, userId, quantity)),
+          )
 
       describe('events', () => {
         test('createEvent then findEvent returns the same event', async () => {
@@ -51,7 +56,9 @@ for (const implementation of implementations) {
         test('findEvent returns None for an unknown id', async () => {
           const { repository } = await setup()
 
-          expect(Option.isNone(await repository.findEvent(EventId.make()))).toBe(true)
+          expect(
+            Option.isNone(await repository.findEvent(EventId.make())),
+          ).toBe(true)
         })
 
         test('createEvent rejects an unknown venue as InvalidInput', async () => {
@@ -87,15 +94,20 @@ for (const implementation of implementations) {
             after: new Date('2098-03-01T00:00:00Z'),
           })
 
-          expect(all.map((e) => e.data.id)).toEqual([early.data.id, late.data.id])
+          expect(all.map((e) => e.data.id)).toEqual([
+            early.data.id,
+            late.data.id,
+          ])
           expect(after.map((e) => e.data.id)).toEqual([late.data.id])
         })
 
         test('updateEvent persists a successful change', async () => {
           const { repository, event } = await withEvent()
 
-          const result = await repository.updateEvent(event.data.id, (current) =>
-            current.update({ title: 'Renamed' }, 0, new Date('2030-01-01')),
+          const result = await repository.updateEvent(
+            event.data.id,
+            (current) =>
+              current.update({ title: 'Renamed' }, 0, new Date('2030-01-01')),
           )
 
           expect(result._tag).toBe('Success')
@@ -106,38 +118,65 @@ for (const implementation of implementations) {
         test('updateEvent on an unknown id fails with NotFound', async () => {
           const { repository } = await setup()
 
-          const result = await repository.updateEvent(EventId.make(), (e) => Result.succeed(e))
+          const result = await repository.updateEvent(EventId.make(), (e) =>
+            Result.succeed(e),
+          )
 
-          expect(result._tag === 'Failure' && result.error).toBeInstanceOf(NotFound)
+          expect(result._tag === 'Failure' && result.error).toBeInstanceOf(
+            NotFound,
+          )
         })
 
         test('updateEvent passes the reserved seats and writes nothing on Failure', async () => {
           const { repository, event, alice } = await withEvent(3)
-          Result.getOrThrow(await reserveFor(alice, event.data.id, 2)(repository))
+          Result.getOrThrow(
+            await reserveFor(alice, event.data.id, 2)(repository),
+          )
           let seen = -1
 
-          const result = await repository.updateEvent(event.data.id, (current, reserved) => {
-            seen = reserved
-            return current.update({ capacity: 1, title: 'Nope' }, reserved, new Date('2030-01-01'))
-          })
+          const result = await repository.updateEvent(
+            event.data.id,
+            (current, reserved) => {
+              seen = reserved
+              return current.update(
+                { capacity: 1, title: 'Nope' },
+                reserved,
+                new Date('2030-01-01'),
+              )
+            },
+          )
 
           expect(seen).toBe(2)
-          expect(result._tag === 'Failure' && result.error).toBeInstanceOf(Conflict)
+          expect(result._tag === 'Failure' && result.error).toBeInstanceOf(
+            Conflict,
+          )
           const found = await repository.findEvent(event.data.id)
           expect(Option.isSome(found) && found.value.data.capacity).toBe(3)
-          expect(Option.isSome(found) && found.value.data.title).toBe(event.data.title)
+          expect(Option.isSome(found) && found.value.data.title).toBe(
+            event.data.title,
+          )
         })
 
         test('updateEvent rejects an unknown venue as InvalidInput and keeps the event', async () => {
           const { repository, event } = await withEvent()
 
-          const result = await repository.updateEvent(event.data.id, (current) =>
-            current.update({ venueId: VenueId.make() }, 0, new Date('2030-01-01')),
+          const result = await repository.updateEvent(
+            event.data.id,
+            (current) =>
+              current.update(
+                { venueId: VenueId.make() },
+                0,
+                new Date('2030-01-01'),
+              ),
           )
 
-          expect(result._tag === 'Failure' && result.error).toBeInstanceOf(InvalidInput)
+          expect(result._tag === 'Failure' && result.error).toBeInstanceOf(
+            InvalidInput,
+          )
           const found = await repository.findEvent(event.data.id)
-          expect(Option.isSome(found) && found.value.data.venueId).toBe(event.data.venueId)
+          expect(Option.isSome(found) && found.value.data.venueId).toBe(
+            event.data.venueId,
+          )
         })
       })
 
@@ -154,7 +193,9 @@ for (const implementation of implementations) {
 
         test('reserve reports the seats already taken and ignores cancelled ones', async () => {
           const { repository, event, alice, bob } = await withEvent(5)
-          const first = Result.getOrThrow(await reserveFor(alice, event.data.id, 2)(repository))
+          const first = Result.getOrThrow(
+            await reserveFor(alice, event.data.id, 2)(repository),
+          )
           Result.getOrThrow(await reserveFor(bob, event.data.id, 1)(repository))
           Result.getOrThrow(
             await repository.cancelReservation(first.data.id, alice, (r) =>
@@ -176,7 +217,9 @@ for (const implementation of implementations) {
 
           const result = await reserveFor(alice, EventId.make())(repository)
 
-          expect(result._tag === 'Failure' && result.error).toBeInstanceOf(NotFound)
+          expect(result._tag === 'Failure' && result.error).toBeInstanceOf(
+            NotFound,
+          )
         })
 
         test('reserve writes nothing when the callback fails', async () => {
@@ -196,32 +239,53 @@ for (const implementation of implementations) {
 
           const result = await reserveFor(ghost, event.data.id)(repository)
 
-          expect(result._tag === 'Failure' && result.error).toBeInstanceOf(InvalidInput)
+          expect(result._tag === 'Failure' && result.error).toBeInstanceOf(
+            InvalidInput,
+          )
           expect(await repository.listReservations(ghost)).toHaveLength(0)
         })
 
         test('listReservations is ordered by creation date', async () => {
           const { repository, event, alice } = await withEvent(5)
-          const later = aReservation(event.data.id, alice, 1, new Date('2030-02-01T00:00:00Z'))
-          const earlier = aReservation(event.data.id, alice, 1, new Date('2030-01-01T00:00:00Z'))
+          const later = aReservation(
+            event.data.id,
+            alice,
+            1,
+            new Date('2030-02-01T00:00:00Z'),
+          )
+          const earlier = aReservation(
+            event.data.id,
+            alice,
+            1,
+            new Date('2030-01-01T00:00:00Z'),
+          )
           for (const r of [later, earlier]) {
-            Result.getOrThrow(await repository.reserve(event.data.id, () => Result.succeed(r)))
+            Result.getOrThrow(
+              await repository.reserve(event.data.id, () => Result.succeed(r)),
+            )
           }
 
           const listed = await repository.listReservations(alice)
 
-          expect(listed.map((r) => r.data.id)).toEqual([earlier.data.id, later.data.id])
+          expect(listed.map((r) => r.data.id)).toEqual([
+            earlier.data.id,
+            later.data.id,
+          ])
         })
       })
 
       describe('cancelReservation', () => {
         test('cancels and persists cancelledAt', async () => {
           const { repository, event, alice } = await withEvent()
-          const reservation = Result.getOrThrow(await reserveFor(alice, event.data.id)(repository))
+          const reservation = Result.getOrThrow(
+            await reserveFor(alice, event.data.id)(repository),
+          )
           const now = new Date('2030-01-01T00:00:00Z')
 
-          const result = await repository.cancelReservation(reservation.data.id, alice, (r) =>
-            r.cancel(now),
+          const result = await repository.cancelReservation(
+            reservation.data.id,
+            alice,
+            (r) => r.cancel(now),
           )
 
           expect(result._tag).toBe('Success')
@@ -231,32 +295,49 @@ for (const implementation of implementations) {
 
         test('a cancelled reservation frees its seats', async () => {
           const { repository, event, alice, bob } = await withEvent(1)
-          const reservation = Result.getOrThrow(await reserveFor(alice, event.data.id)(repository))
+          const reservation = Result.getOrThrow(
+            await reserveFor(alice, event.data.id)(repository),
+          )
           Result.getOrThrow(
-            await repository.cancelReservation(reservation.data.id, alice, (r) =>
-              r.cancel(new Date('2030-01-01')),
+            await repository.cancelReservation(
+              reservation.data.id,
+              alice,
+              (r) => r.cancel(new Date('2030-01-01')),
             ),
           )
 
-          const again = await repository.reserve(event.data.id, (e, reserved) => {
-            const check = e.checkReservation(1, reserved, new Date('2030-01-01'))
-            return check._tag === 'Failure'
-              ? check
-              : Result.succeed(aReservation(event.data.id, bob))
-          })
+          const again = await repository.reserve(
+            event.data.id,
+            (e, reserved) => {
+              const check = e.checkReservation(
+                1,
+                reserved,
+                new Date('2030-01-01'),
+              )
+              return check._tag === 'Failure'
+                ? check
+                : Result.succeed(aReservation(event.data.id, bob))
+            },
+          )
 
           expect(again._tag).toBe('Success')
         })
 
         test('another user gets NotFound and the reservation stays active', async () => {
           const { repository, event, alice, bob } = await withEvent()
-          const reservation = Result.getOrThrow(await reserveFor(alice, event.data.id)(repository))
-
-          const result = await repository.cancelReservation(reservation.data.id, bob, (r) =>
-            r.cancel(new Date('2030-01-01')),
+          const reservation = Result.getOrThrow(
+            await reserveFor(alice, event.data.id)(repository),
           )
 
-          expect(result._tag === 'Failure' && result.error).toBeInstanceOf(NotFound)
+          const result = await repository.cancelReservation(
+            reservation.data.id,
+            bob,
+            (r) => r.cancel(new Date('2030-01-01')),
+          )
+
+          expect(result._tag === 'Failure' && result.error).toBeInstanceOf(
+            NotFound,
+          )
           const [stored] = await repository.listReservations(alice)
           expect(stored && Option.isNone(stored.data.cancelledAt)).toBe(true)
         })
@@ -264,16 +345,22 @@ for (const implementation of implementations) {
         test('unknown reservation fails with NotFound', async () => {
           const { repository, alice } = await setup()
 
-          const result = await repository.cancelReservation(ReservationId.make(), alice, (r) =>
-            r.cancel(new Date()),
+          const result = await repository.cancelReservation(
+            ReservationId.make(),
+            alice,
+            (r) => r.cancel(new Date()),
           )
 
-          expect(result._tag === 'Failure' && result.error).toBeInstanceOf(NotFound)
+          expect(result._tag === 'Failure' && result.error).toBeInstanceOf(
+            NotFound,
+          )
         })
 
         test('cancelling twice fails with Conflict', async () => {
           const { repository, event, alice } = await withEvent()
-          const reservation = Result.getOrThrow(await reserveFor(alice, event.data.id)(repository))
+          const reservation = Result.getOrThrow(
+            await reserveFor(alice, event.data.id)(repository),
+          )
           const cancel = () =>
             repository.cancelReservation(reservation.data.id, alice, (r) =>
               r.cancel(new Date('2030-01-01')),
@@ -282,7 +369,9 @@ for (const implementation of implementations) {
 
           const second = await cancel()
 
-          expect(second._tag === 'Failure' && second.error).toBeInstanceOf(Conflict)
+          expect(second._tag === 'Failure' && second.error).toBeInstanceOf(
+            Conflict,
+          )
         })
       })
 
@@ -299,7 +388,11 @@ for (const implementation of implementations) {
         const seatPolicy =
           (userId: UserId, event: ReturnType<typeof anEvent>) =>
           (current: typeof event, reserved: number) => {
-            const check = current.checkReservation(1, reserved, new Date('2030-01-01'))
+            const check = current.checkReservation(
+              1,
+              reserved,
+              new Date('2030-01-01'),
+            )
             return check._tag === 'Failure'
               ? check
               : Result.succeed(aReservation(event.data.id, userId))
@@ -316,7 +409,9 @@ for (const implementation of implementations) {
 
           expect(results.filter((r) => r._tag === 'Success')).toHaveLength(1)
           const failure = results.find((r) => r._tag === 'Failure')
-          expect(failure?._tag === 'Failure' && failure.error).toBeInstanceOf(Conflict)
+          expect(failure?._tag === 'Failure' && failure.error).toBeInstanceOf(
+            Conflict,
+          )
           const total =
             (await repository.listReservations(alice)).length +
             (await repository.listReservations(bob)).length
@@ -329,16 +424,23 @@ for (const implementation of implementations) {
 
           const results = await Promise.all(
             Array.from({ length: 12 }, (_, i) =>
-              repository.reserve(event.data.id, seatPolicy(i % 2 === 0 ? alice : bob, event)),
+              repository.reserve(
+                event.data.id,
+                seatPolicy(i % 2 === 0 ? alice : bob, event),
+              ),
             ),
           )
 
-          expect(results.filter((r) => r._tag === 'Success')).toHaveLength(capacity)
+          expect(results.filter((r) => r._tag === 'Success')).toHaveLength(
+            capacity,
+          )
         })
 
         test('concurrent cancel and reserve on a full event stay consistent', async () => {
           const { repository, event, alice, bob } = await withEvent(1)
-          const held = Result.getOrThrow(await reserveFor(alice, event.data.id)(repository))
+          const held = Result.getOrThrow(
+            await reserveFor(alice, event.data.id)(repository),
+          )
 
           const [cancelled, reserved] = await Promise.all([
             repository.cancelReservation(held.data.id, alice, (r) =>
