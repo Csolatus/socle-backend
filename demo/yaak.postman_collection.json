@@ -1,0 +1,673 @@
+{
+  "info": {
+    "name": "Day 2: REST and MCP side by side",
+    "description": "Run initialization first. Each workflow pairs its real REST endpoint with an MCP tool. Both write to the same database; running both write requests performs the action twice. Copy reservationId from a response before cancelling. Every request sends Alice identity. Chat requires OPENROUTER_API_KEY.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "reservationId",
+      "value": "REPLACE_WITH_RESERVATION_ID"
+    }
+  ],
+  "item": [
+    {
+      "name": "0. MCP handshake and discovery",
+      "item": [
+        {
+          "name": "Initialize",
+          "request": {
+            "method": "POST",
+            "url": "http://127.0.0.1:3000/mcp",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json, text/event-stream"
+              },
+              {
+                "key": "MCP-Protocol-Version",
+                "value": "2025-11-25"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "01900000-0000-7000-8000-000000000001"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 1,\n  \"method\": \"initialize\",\n  \"params\": {\n    \"protocolVersion\": \"2025-11-25\",\n    \"capabilities\": {},\n    \"clientInfo\": {\n      \"name\": \"yaak-demo\",\n      \"version\": \"1.0.0\"\n    }\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Initialized notification: 202",
+          "request": {
+            "method": "POST",
+            "url": "http://127.0.0.1:3000/mcp",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json, text/event-stream"
+              },
+              {
+                "key": "MCP-Protocol-Version",
+                "value": "2025-11-25"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "01900000-0000-7000-8000-000000000001"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"notifications/initialized\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Discover tools and JSON Schemas",
+          "request": {
+            "method": "POST",
+            "url": "http://127.0.0.1:3000/mcp",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json, text/event-stream"
+              },
+              {
+                "key": "MCP-Protocol-Version",
+                "value": "2025-11-25"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "01900000-0000-7000-8000-000000000001"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 2,\n  \"method\": \"tools/list\",\n  \"params\": {}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "1. List events",
+      "item": [
+        {
+          "name": "REST: GET /events",
+          "request": {
+            "method": "GET",
+            "url": "http://127.0.0.1:3000/events?category=gaming",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "01900000-0000-7000-8000-000000000001"
+              }
+            ]
+          }
+        },
+        {
+          "name": "MCP: list_events",
+          "request": {
+            "method": "POST",
+            "url": "http://127.0.0.1:3000/mcp",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json, text/event-stream"
+              },
+              {
+                "key": "MCP-Protocol-Version",
+                "value": "2025-11-25"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "01900000-0000-7000-8000-000000000001"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 3,\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"list_events\",\n    \"arguments\": {\n      \"category\": \"gaming\"\n    }\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Create event",
+      "item": [
+        {
+          "name": "REST: POST /events",
+          "request": {
+            "method": "POST",
+            "url": "http://127.0.0.1:3000/events",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "01900000-0000-7000-8000-000000000001"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Game night\",\n  \"category\": \"gaming\",\n  \"startsAt\": \"2099-06-15T18:00:00Z\",\n  \"capacity\": 20,\n  \"venueId\": \"01900000-0000-7000-8000-000000000003\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "MCP: create_event",
+          "request": {
+            "method": "POST",
+            "url": "http://127.0.0.1:3000/mcp",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json, text/event-stream"
+              },
+              {
+                "key": "MCP-Protocol-Version",
+                "value": "2025-11-25"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "01900000-0000-7000-8000-000000000001"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 4,\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"create_event\",\n    \"arguments\": {\n      \"title\": \"Game night\",\n      \"category\": \"gaming\",\n      \"startsAt\": \"2099-06-15T18:00:00Z\",\n      \"capacity\": 20,\n      \"venueId\": \"01900000-0000-7000-8000-000000000003\"\n    }\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Read event",
+      "item": [
+        {
+          "name": "REST: GET /events/:eventId",
+          "request": {
+            "method": "GET",
+            "url": "http://127.0.0.1:3000/events/01900000-0000-7000-8000-000000000004",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "01900000-0000-7000-8000-000000000001"
+              }
+            ]
+          }
+        },
+        {
+          "name": "MCP: get_event",
+          "request": {
+            "method": "POST",
+            "url": "http://127.0.0.1:3000/mcp",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json, text/event-stream"
+              },
+              {
+                "key": "MCP-Protocol-Version",
+                "value": "2025-11-25"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "01900000-0000-7000-8000-000000000001"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 5,\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"get_event\",\n    \"arguments\": {\n      \"eventId\": \"01900000-0000-7000-8000-000000000004\"\n    }\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Update event",
+      "item": [
+        {
+          "name": "REST: PATCH /events/:eventId",
+          "request": {
+            "method": "PATCH",
+            "url": "http://127.0.0.1:3000/events/01900000-0000-7000-8000-000000000004",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "01900000-0000-7000-8000-000000000001"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"capacity\": 20\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "MCP: update_event",
+          "request": {
+            "method": "POST",
+            "url": "http://127.0.0.1:3000/mcp",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json, text/event-stream"
+              },
+              {
+                "key": "MCP-Protocol-Version",
+                "value": "2025-11-25"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "01900000-0000-7000-8000-000000000001"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 6,\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"update_event\",\n    \"arguments\": {\n      \"eventId\": \"01900000-0000-7000-8000-000000000004\",\n      \"patch\": {\n        \"capacity\": 20\n      }\n    }\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Reserve seats as Alice",
+      "item": [
+        {
+          "name": "REST: POST /events/:eventId/reservations",
+          "request": {
+            "method": "POST",
+            "url": "http://127.0.0.1:3000/events/01900000-0000-7000-8000-000000000004/reservations",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "01900000-0000-7000-8000-000000000001"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantity\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "MCP: reserve_event",
+          "request": {
+            "method": "POST",
+            "url": "http://127.0.0.1:3000/mcp",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json, text/event-stream"
+              },
+              {
+                "key": "MCP-Protocol-Version",
+                "value": "2025-11-25"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "01900000-0000-7000-8000-000000000001"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 7,\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"reserve_event\",\n    \"arguments\": {\n      \"eventId\": \"01900000-0000-7000-8000-000000000004\",\n      \"quantity\": 2\n    }\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Read Alice reservations from either transport",
+      "item": [
+        {
+          "name": "REST: GET /me/reservations",
+          "request": {
+            "method": "GET",
+            "url": "http://127.0.0.1:3000/me/reservations",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "01900000-0000-7000-8000-000000000001"
+              }
+            ]
+          }
+        },
+        {
+          "name": "MCP: list_my_reservations",
+          "request": {
+            "method": "POST",
+            "url": "http://127.0.0.1:3000/mcp",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json, text/event-stream"
+              },
+              {
+                "key": "MCP-Protocol-Version",
+                "value": "2025-11-25"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "01900000-0000-7000-8000-000000000001"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 8,\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"list_my_reservations\",\n    \"arguments\": {}\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Cancel: replace reservationId first",
+      "item": [
+        {
+          "name": "REST: POST /reservations/:reservationId/cancellation",
+          "request": {
+            "method": "POST",
+            "url": "http://127.0.0.1:3000/reservations/{{reservationId}}/cancellation",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "01900000-0000-7000-8000-000000000001"
+              }
+            ]
+          }
+        },
+        {
+          "name": "MCP: cancel_reservation",
+          "request": {
+            "method": "POST",
+            "url": "http://127.0.0.1:3000/mcp",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json, text/event-stream"
+              },
+              {
+                "key": "MCP-Protocol-Version",
+                "value": "2025-11-25"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "01900000-0000-7000-8000-000000000001"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 9,\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"cancel_reservation\",\n    \"arguments\": {\n      \"reservationId\": \"{{reservationId}}\"\n    }\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Compare business failures",
+      "item": [
+        {
+          "name": "REST: overbooking returns HTTP 409",
+          "request": {
+            "method": "POST",
+            "url": "http://127.0.0.1:3000/events/01900000-0000-7000-8000-000000000004/reservations",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "01900000-0000-7000-8000-000000000001"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantity\": 21\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "MCP: reserve_event",
+          "request": {
+            "method": "POST",
+            "url": "http://127.0.0.1:3000/mcp",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json, text/event-stream"
+              },
+              {
+                "key": "MCP-Protocol-Version",
+                "value": "2025-11-25"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "01900000-0000-7000-8000-000000000001"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 10,\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"reserve_event\",\n    \"arguments\": {\n      \"eventId\": \"01900000-0000-7000-8000-000000000004\",\n      \"quantity\": 21\n    }\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "9. Compare invalid inputs",
+      "item": [
+        {
+          "name": "REST: bad UUID returns HTTP 400",
+          "request": {
+            "method": "GET",
+            "url": "http://127.0.0.1:3000/events/invalid",
+            "header": [
+              {
+                "key": "X-User-Id",
+                "value": "01900000-0000-7000-8000-000000000001"
+              }
+            ]
+          }
+        },
+        {
+          "name": "MCP: get_event",
+          "request": {
+            "method": "POST",
+            "url": "http://127.0.0.1:3000/mcp",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json, text/event-stream"
+              },
+              {
+                "key": "MCP-Protocol-Version",
+                "value": "2025-11-25"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "01900000-0000-7000-8000-000000000001"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jsonrpc\": \"2.0\",\n  \"id\": 11,\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"get_event\",\n    \"arguments\": {\n      \"eventId\": \"invalid\"\n    }\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "10. TanStack AI chat via MCP: SSE",
+      "item": [
+        {
+          "name": "POST /chat: stream my reservations",
+          "request": {
+            "method": "POST",
+            "url": "http://127.0.0.1:3000/chat",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-User-Id",
+                "value": "01900000-0000-7000-8000-000000000001"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"Show my reservations using your tools\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

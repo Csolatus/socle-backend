@@ -1,0 +1,479 @@
+:root {
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+  color: #252925;
+  background: #fbfcfa;
+  font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+  --accent: #286044;
+  --muted: #626b63;
+  --line: rgb(30 48 34 / 12%);
+}
+* {
+  box-sizing: border-box;
+}
+[hidden] {
+  display: none !important;
+}
+body {
+  margin: 0;
+}
+a {
+  color: inherit;
+}
+button,
+textarea {
+  font: inherit;
+}
+button {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+p {
+  text-wrap: pretty;
+}
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+  font-weight: 600;
+}
+.shell {
+  max-width: 1240px;
+  margin: auto;
+  padding: 0 40px 32px;
+}
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  min-height: 100px;
+  border-bottom: 1px solid var(--line);
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 18px;
+}
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  background: var(--accent);
+  color: white;
+  border-radius: 10px;
+  font-size: 23px;
+  flex-shrink: 0;
+}
+.demo-label,
+.model-note {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.65;
+}
+.layout {
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: minmax(0, 340px) minmax(0, 1fr);
+  gap: 64px;
+  padding-top: 44px;
+}
+.intro,
+.workspace {
+  min-width: 0;
+}
+.eyebrow {
+  color: var(--accent);
+  font-size: 14px;
+  margin: 0 0 18px;
+  font-weight: 600;
+}
+h1 {
+  font-size: clamp(36px, 4.3vw, 52px);
+  letter-spacing: -0.045em;
+  margin: 0 0 22px;
+}
+.intro-copy {
+  color: var(--muted);
+  line-height: 1.7;
+  font-size: 16px;
+  margin: 0;
+  max-width: 38ch;
+}
+.identity {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+}
+.identity-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+}
+.identity-heading > div {
+  min-width: 0;
+}
+.identity-heading p {
+  margin: 3px 0 0;
+  color: var(--muted);
+}
+.avatar {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #e6eee7;
+  color: var(--accent);
+  font-weight: 600;
+}
+.identity > p {
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--muted);
+  margin: 14px 0 0;
+}
+.suggestions {
+  margin-top: 30px;
+}
+.suggestions h2 {
+  font-size: 14px;
+  margin: 0 0 10px;
+}
+.suggestions button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  text-align: left;
+  min-height: 38px;
+  padding: 8px 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--accent);
+  background: transparent;
+  font-size: 14px;
+}
+.suggestions button:hover:not(:disabled) {
+  color: #143b27;
+  background: #eef3ec;
+}
+.model-note {
+  margin: 30px 0 0;
+}
+.workspace {
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: white;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.workspace-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--line);
+}
+.workspace-header h2 {
+  font-size: 16px;
+  margin: 0;
+}
+.turn-label {
+  color: var(--accent);
+  background: #edf3ee;
+  border-radius: 6px;
+  padding: 5px 8px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.response-area {
+  padding: 24px;
+  min-height: 330px;
+  max-height: 520px;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+  flex: 1;
+}
+.empty-state {
+  text-align: center;
+  padding: 48px 0;
+}
+.empty-mark {
+  color: var(--accent);
+  font-size: 42px;
+}
+.empty-state h3 {
+  font-size: 20px;
+  letter-spacing: -0.02em;
+  margin: 16px 0 10px;
+}
+.empty-state p {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.8;
+  margin: 0;
+}
+.response-label {
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 10px;
+}
+.request-text {
+  font-size: 15px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  margin: 0 0 24px;
+}
+.answer {
+  white-space: pre-wrap;
+  font-size: 15px;
+  line-height: 1.8;
+}
+.activity {
+  background: #f5f7f3;
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 24px;
+}
+.activity h3 {
+  font-size: 14px;
+  margin: 0 0 10px;
+}
+.activity ol {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 12px;
+}
+.activity summary {
+  cursor: pointer;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.activity pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 10px 0 0;
+}
+.composer {
+  padding: 18px 24px 20px;
+  border-top: 1px solid var(--line);
+}
+.status {
+  font-size: 14px;
+  color: var(--accent);
+  line-height: 1.6;
+  margin: 0 0 14px;
+}
+.error {
+  color: #922f25;
+  background: #fff2ef;
+  border-radius: 8px;
+  padding: 12px;
+  margin: 0 0 14px;
+  font-size: 14px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+form label {
+  font-size: 14px;
+  font-weight: 600;
+  display: block;
+  margin-bottom: 8px;
+}
+textarea {
+  display: block;
+  width: 100%;
+  resize: vertical;
+  min-height: 90px;
+  max-height: 260px;
+  border: 1px solid rgb(30 48 34 / 22%);
+  border-radius: 10px;
+  padding: 12px;
+  font-size: 16px;
+  line-height: 1.5;
+  background: #fff;
+  color: inherit;
+}
+textarea:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+textarea::placeholder {
+  color: #747c74;
+}
+.composer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 12px;
+}
+.composer-actions p {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0;
+}
+.buttons {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+.buttons button {
+  border-radius: 8px;
+  min-height: 38px;
+  padding: 8px 12px;
+  font-size: 14px;
+  border: 1px solid var(--line);
+  background: white;
+  color: var(--muted);
+}
+.buttons #send {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+#send:hover:not(:disabled) {
+  background: #1d4933;
+}
+#stop:hover {
+  background: #f2f4f0;
+}
+.turn-note {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.65;
+  margin: 14px 0 0;
+}
+.skip-link {
+  position: fixed;
+  top: -100px;
+  left: 16px;
+  z-index: 1;
+  padding: 12px;
+  background: white;
+}
+.skip-link:focus {
+  top: 12px;
+}
+.noscript {
+  padding: 16px;
+  color: #922f25;
+}
+@media (max-width: 1000px) {
+  .layout {
+    grid-template-columns: minmax(0, 280px) minmax(0, 1fr);
+    gap: 32px;
+  }
+  .shell {
+    padding-inline: 24px;
+  }
+}
+@media (max-width: 760px) {
+  .shell {
+    padding: 0 18px 24px;
+  }
+  .header {
+    min-height: 76px;
+  }
+  .demo-label {
+    font-size: 13px;
+  }
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 28px;
+    padding-top: 28px;
+  }
+  h1 {
+    font-size: 40px;
+  }
+  h1 br {
+    display: none;
+  }
+  .intro-copy {
+    max-width: 56ch;
+  }
+  .identity {
+    margin-top: 22px;
+    padding-top: 18px;
+  }
+  .identity-heading,
+  .identity > p,
+  .suggestions h2,
+  .suggestions button,
+  .model-note {
+    font-size: 16px;
+  }
+  .suggestions {
+    margin-top: 22px;
+  }
+  .suggestions button {
+    min-height: 48px;
+  }
+  .model-note {
+    margin-top: 20px;
+  }
+  .workspace-header,
+  .response-area,
+  .composer {
+    padding-inline: 18px;
+  }
+  .response-area {
+    min-height: 260px;
+    max-height: 60dvh;
+  }
+  .empty-state {
+    padding: 24px 0;
+  }
+  .answer,
+  .request-text,
+  .empty-state p,
+  .response-label,
+  .status,
+  .error,
+  form label,
+  .activity summary,
+  .activity h3,
+  .activity pre,
+  .turn-note,
+  .composer-actions p {
+    font-size: 16px;
+  }
+  .buttons button {
+    min-height: 48px;
+    font-size: 16px;
+  }
+  .turn-label {
+    font-size: 14px;
+  }
+}
