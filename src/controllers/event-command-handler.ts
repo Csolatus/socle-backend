@@ -1,6 +1,5 @@
 import type { Context } from 'hono'
 import type { Services } from '#/application/services.ts'
-import type { EventFilter } from '#/application/ports.ts'
 import type { EventInput } from '#/domain/event.ts'
 import type { EventId, ReservationId } from '#/domain/ids.ts'
 import { Option } from '#/shared-kernel/option.ts'
@@ -11,21 +10,17 @@ import {
   presentReservation,
 } from '#/presentation/event-presenter.ts'
 
-export function createEventController({
-  read,
+// HTTP writes. Each operation delegates to its command use case.
+export function createEventCommandHandler({
   identity,
   create,
   update,
   reserve,
   cancel,
-}: Services) {
+}: Pick<Services, 'identity' | 'create' | 'update' | 'reserve' | 'cancel'>) {
   const currentUser = (context: Context) =>
     requestUser(identity, Option.fromNullable(context.req.header('X-User-Id')))
   return {
-    list: async (context: Context, filter: EventFilter) =>
-      context.json((await read.list(filter)).map(presentEvent)),
-    get: async (context: Context, id: EventId) =>
-      httpResult(context, await read.get(id), presentEvent),
     create: async (context: Context, input: EventInput) => {
       const result = await create.execute(input)
       if (result._tag === 'Success') {
@@ -60,4 +55,4 @@ export function createEventController({
     },
   }
 }
-export type EventController = ReturnType<typeof createEventController>
+export type EventCommandHandler = ReturnType<typeof createEventCommandHandler>

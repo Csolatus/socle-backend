@@ -105,9 +105,10 @@ The migration resolves this; changing the client request or adding identity does
 ## Architecture
 
 ```text
-REST /events, /reservations ──> REST controller ──┐
-                                                ├─> Application operations ─> Repository
-MCP /mcp ────────────────────> Tool handlers ─────┘
+REST reads (GET) ──────────────> Query handler ───┐
+REST writes (POST, PATCH) ─────> Command handler ─┤
+                                                  ├─> Application operations ─> Repository
+MCP /mcp ──────────────────────> Tool handlers ───┘
           ↑
 TanStack AI /chat ────────────> MCP HTTP client
 ```
@@ -117,7 +118,7 @@ src/
   bootstrap.ts          Composition root and local HTTP server
   app.ts                Hono delivery setup and HTTP error mapping
   routes/               REST routes and request validation
-  controllers/          REST translation and application invocation
+  controllers/          REST query handler (reads) and command handler (writes)
   mcp/                  MCP tools, schemas, results and Streamable HTTP transport
   chat/                 TanStack AI model loop and AG-UI SSE responses
   application/          Focused handlers, reads, identity and repository interface

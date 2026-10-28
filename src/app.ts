@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { HTTPException } from 'hono/http-exception'
-import { createEventController } from '#/controllers/event-controller.ts'
+import { createEventCommandHandler } from '#/controllers/event-command-handler.ts'
+import { createEventQueryHandler } from '#/controllers/event-query-handler.ts'
 import { createUserController } from '#/controllers/user-controller.ts'
 import { userRoutes } from '#/routes/user-routes.ts'
 import type { Services } from '#/application/services.ts'
@@ -12,7 +13,13 @@ import { presentError } from '#/presentation/event-presenter.ts'
 
 export function createApp(services: Services, chatOptions: ChatOptions) {
   const app = new Hono()
-  app.route('/', eventRoutes(createEventController(services)))
+  app.route(
+    '/',
+    eventRoutes(
+      createEventQueryHandler(services),
+      createEventCommandHandler(services),
+    ),
+  )
   app.route('/', userRoutes(createUserController(services)))
   app.route('/', mcpRoutes(services))
   app.route('/', chatRoutes(services, chatOptions))

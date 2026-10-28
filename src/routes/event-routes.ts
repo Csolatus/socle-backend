@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
-import type { EventController } from '#/controllers/event-controller.ts'
+import type { EventCommandHandler } from '#/controllers/event-command-handler.ts'
+import type { EventQueryHandler } from '#/controllers/event-query-handler.ts'
 import { httpFailure } from '#/controllers/http-result.ts'
 import { requestJson } from '#/request.ts'
 import {
@@ -12,28 +13,32 @@ import {
   reservationIdSchema,
 } from '#/validation.ts'
 
-export function eventRoutes(controller: EventController) {
+// Reads go to the query handler, writes to the command handler.
+export function eventRoutes(
+  queries: EventQueryHandler,
+  commands: EventCommandHandler,
+) {
   const routes = new Hono()
   routes.get('/events', (c) => {
     const input = parse(eventFilterSchema, c.req.query())
     if (input._tag === 'Failure') {
       return httpFailure(c, input.error)
     }
-    return controller.list(c, input.value)
+    return queries.list(c, input.value)
   })
   routes.post('/events', async (c) => {
     const input = await requestJson(c.req.raw, createEventSchema)
     if (input._tag === 'Failure') {
       return httpFailure(c, input.error)
     }
-    return controller.create(c, input.value)
+    return commands.create(c, input.value)
   })
   routes.get('/events/:eventId', (c) => {
     const id = parse(eventIdSchema, c.req.param('eventId'))
     if (id._tag === 'Failure') {
       return httpFailure(c, id.error)
     }
-    return controller.get(c, id.value)
+    return queries.get(c, id.value)
   })
   routes.patch('/events/:eventId', async (c) => {
     const id = parse(eventIdSchema, c.req.param('eventId'))
@@ -44,7 +49,7 @@ export function eventRoutes(controller: EventController) {
     if (patch._tag === 'Failure') {
       return httpFailure(c, patch.error)
     }
-    return controller.update(c, id.value, patch.value)
+    return commands.update(c, id.value, patch.value)
   })
   routes.post('/events/:eventId/reservations', async (c) => {
     const body = await requestJson(c.req.raw, reservationSchema)
@@ -55,14 +60,14 @@ export function eventRoutes(controller: EventController) {
     if (id._tag === 'Failure') {
       return httpFailure(c, id.error)
     }
-    return controller.reserve(c, id.value, body.value.quantity)
+    return commands.reserve(c, id.value, body.value.quantity)
   })
   routes.post('/reservations/:reservationId/cancellation', (c) => {
     const id = parse(reservationIdSchema, c.req.param('reservationId'))
     if (id._tag === 'Failure') {
       return httpFailure(c, id.error)
     }
-    return controller.cancel(c, id.value)
+    return commands.cancel(c, id.value)
   })
   return routes
 }
