@@ -35,16 +35,3 @@ export const Option = {
   ): Result =>
     option._tag === 'Some' ? cases.onSome(option.value) : cases.onNone(),
 } as const
-
-
-
-function demo() {
-  const demo1 = Option.some("value")
-  if (Option.isSome(demo1)) {
-    const v = demo1.value
-
-  }
-}
-
-
-

@@ -12,6 +12,8 @@ Requires Bun and Docker Compose. From this directory:
 cp .env.example .env
 bun install
 docker compose up -d --wait
+bun run db:migrate
+bun run db:seed
 bun run dev
 ```
 
@@ -46,18 +48,26 @@ Open http://localhost:8080 and select PostgreSQL:
 | Database | `events`   |
 
 `postgres` is the Compose service name, not localhost inside Adminer.
-Use SQL command to query the database or Import to load `sql/init.sql`.
+Use SQL command to query the database.
 These services bind to localhost and use demo credentials.
 
-### SQL and UUID-v7 upgrade
+### Schema, migrations and seed
 
-`sql/init.sql` creates `users`, `venues`, `events`, and `reservations` and inserts demo
-records. Compose runs it automatically only when the database volume is empty.
-To execute it manually against the current schema:
+The schema is defined with Drizzle in `src/infrastructure/schema.ts` (`users`, `venues`,
+`events`, `reservations`). Migrations live in `drizzle/` and are generated, never
+written by hand:
 
 ```sh
-docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U events -d events < sql/init.sql
+bun run db:generate   # after editing schema.ts: writes a new file in drizzle/
+bun run db:migrate    # applies pending migrations, recorded in drizzle.__drizzle_migrations
+bun run db:seed       # inserts the demo records from sql/seed.sql, safe to rerun
 ```
+
+Compose no longer creates the schema: start the database, then run `db:migrate`.
+A database created earlier from the old `sql/init.sql` already has the tables, so
+`db:migrate` fails on it. Reset the disposable volume (below) or recreate it.
+
+### UUID-v7 upgrade
 
 The new domain requires lowercase UUID v7 identifiers. Previous v4 demo data is not
 compatible. Rerunning the seed file does not migrate old rows. For disposable lesson
@@ -79,7 +89,7 @@ This converts legacy identifiers and their foreign keys in one transaction, pres
 reservations and ownership. It prints the old-to-new mapping for external references.
 A collision with an already-existing target ID causes a rollback rather than data loss.
 Rerunning the migration leaves UUID-v7 records unchanged. Run it before rerunning the
-seed file on an old database. No database reset or migration is performed automatically.
+seed on an old database. No database reset or migration is performed automatically.
 
 If MCP `list_events` returns `INTERNAL_ERROR` and REST `/events` also returns 500,
 check the server logs: old UUID-v4 rows cannot be decoded by the UUID-v7 domain mapper.
@@ -113,10 +123,12 @@ src/
   application/          Focused handlers, reads, identity and repository interface
   domain/               Event and reservation rules; branded UUID-v7 identifiers
   shared-kernel/        Option and Result, without framework dependencies
-  infrastructure/       PostgreSQL and in-memory repository implementations, entity mappings
+  infrastructure/       Drizzle schema and client, PostgreSQL and in-memory repositories, entity mappings
   presentation/         Valibot DTO schemas and domain-to-DTO presenters
   validation.ts         Valibot request schemas and branded ID conversion
-sql/init.sql            PostgreSQL schema and seeds
+drizzle/                Generated SQL migrations and their journal
+sql/seed.sql            Demo records
+scripts/                Migration and seed runners
 ```
 
 Imports use `#/*`, configured in `package.json` and `tsconfig.json` as in `hono-deep`.

@@ -1,11 +1,9 @@
-import { SQL } from 'bun'
 import { createApp } from '#/app.ts'
 import { createServices } from '#/application/services.ts'
+import { createDatabase } from '#/infrastructure/db.ts'
 import { PostgresEventRepository } from '#/infrastructure/postgres-event-repository.ts'
 
-const sql = new SQL(
-  process.env.DATABASE_URL ?? 'postgres://events:events@localhost:55432/events',
-)
+const { sql } = createDatabase(process.env.DATABASE_URL)
 const repository = new PostgresEventRepository(sql)
 const services = createServices(repository)
 const port = Number(process.env.PORT ?? 3000)

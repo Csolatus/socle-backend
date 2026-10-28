@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url'
 import { Hono } from 'hono'
 import { chatPage } from './ui-page.ts'
 
@@ -5,7 +6,7 @@ let clientBundle: Promise<string> | undefined
 
 async function bundleClient(): Promise<string> {
   const result = await Bun.build({
-    entrypoints: [new URL('./client.ts', import.meta.url).pathname],
+    entrypoints: [fileURLToPath(new URL('./client.ts', import.meta.url))],
     target: 'browser',
     minify: true,
   })
