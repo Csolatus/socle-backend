@@ -1,9 +1,9 @@
-import { SQL } from 'bun'
 import type { EventRepository } from '#/application/ports.ts'
 import { Event } from '#/domain/event.ts'
 import { EventId, UserId, VenueId } from '#/domain/ids.ts'
 import { Reservation } from '#/domain/reservation.ts'
 import { ReservationId } from '#/domain/ids.ts'
+import { createDatabase } from '#/infrastructure/db.ts'
 import { InMemoryEventRepository } from '#/infrastructure/in-memory-event-repository.ts'
 import { PostgresEventRepository } from '#/infrastructure/postgres-event-repository.ts'
 import { Option } from '#/shared-kernel/option.ts'
@@ -47,12 +47,13 @@ export const inMemoryImplementation: RepositoryImplementation = {
 export function postgresImplementation(
   url: string | undefined,
 ): RepositoryImplementation {
-  let sql: SQL | undefined
+  let database: ReturnType<typeof createDatabase> | undefined
   return {
     name: 'Postgres',
     enabled: url !== undefined,
     async make() {
-      sql ??= new SQL(url!)
+      database ??= createDatabase(url!)
+      const { sql, db } = database
       const alice = UserId.make()
       const bob = UserId.make()
       const venueId = VenueId.make()
@@ -65,11 +66,11 @@ export function postgresImplementation(
         alice,
         bob,
         venueId,
-        repository: new PostgresEventRepository(sql),
+        repository: new PostgresEventRepository(db),
       }
     },
     async close() {
-      await sql?.close()
+      await database?.sql.close()
     },
   }
 }

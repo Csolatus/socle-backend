@@ -1,4 +1,5 @@
 import { SQL } from 'bun'
+import { and, asc, DrizzleQueryError, eq, gt, isNull, sql } from 'drizzle-orm'
 import type {
   ApplicationError,
   EventFilter,
@@ -10,46 +11,47 @@ import type { EventId, ReservationId, UserId } from '#/domain/ids.ts'
 import { InvalidInput, NotFound } from '#/domain/errors.ts'
 import { Option } from '#/shared-kernel/option.ts'
 import { Result } from '#/shared-kernel/result.ts'
-import {
-  eventToDomain,
-  eventToEntity,
-  type EventEntity,
-} from '#/infrastructure/event-entity.ts'
+import type { Database } from '#/infrastructure/db.ts'
+import { events, reservations, users } from '#/infrastructure/schema.ts'
+import { eventToDomain, eventToEntity } from '#/infrastructure/event-entity.ts'
 import {
   reservationFromRow,
+  reservationToDomain,
   reservationToEntity,
+  reservationToRow,
 } from '#/infrastructure/reservation-entity.ts'
 
-const eventColumns = 'id, title, category, starts_at, capacity, venue_id'
-const reservationColumns =
-  'id, event_id, user_id, quantity, created_at, cancelled_at'
+type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0]
 
 export class PostgresEventRepository implements EventRepository {
-  constructor(private readonly sql: SQL) {}
+  constructor(private readonly db: Database) {}
 
   async listEvents(filter: EventFilter) {
-    const rows = await this.sql<EventEntity[]>`
-      SELECT id, title, category, starts_at, capacity, venue_id FROM events
-      WHERE (${filter.category ?? null}::text IS NULL OR category = ${filter.category ?? null})
-        AND (${filter.after ?? null}::timestamptz IS NULL OR starts_at > ${filter.after ?? null})
-      ORDER BY starts_at, id`
+    const rows = await this.db
+      .select()
+      .from(events)
+      .where(
+        and(
+          filter.category === undefined
+            ? undefined
+            : eq(events.category, filter.category),
+          filter.after === undefined
+            ? undefined
+            : gt(events.startsAt, filter.after),
+        ),
+      )
+      .orderBy(asc(events.startsAt), asc(events.id))
     return rows.map(eventToDomain)
   }
 
   async findEvent(id: EventId): Promise<Option<Event>> {
-    const rows = await this.sql.unsafe<EventEntity[]>(
-      `SELECT ${eventColumns} FROM events WHERE id = $1`,
-      [id],
-    )
-    return Option.map(Option.fromNullable(rows[0]), eventToDomain)
+    const [row] = await this.db.select().from(events).where(eq(events.id, id))
+    return Option.map(Option.fromNullable(row), eventToDomain)
   }
 
   async createEvent(event: Event): Promise<Result<Event, ApplicationError>> {
-    const entity = eventToEntity(event)
     return this.write(async () => {
-      await this
-        .sql`INSERT INTO events (id, title, category, starts_at, capacity, venue_id)
-        VALUES (${entity.id}, ${entity.title}, ${entity.category}, ${entity.starts_at}, ${entity.capacity}, ${entity.venue_id})`
+      await this.db.insert(events).values(eventToEntity(event))
       return Result.succeed(event)
     })
   }
@@ -62,7 +64,7 @@ export class PostgresEventRepository implements EventRepository {
     ) => Result<Event, ApplicationError>,
   ): Promise<Result<Event, ApplicationError>> {
     return this.write(() =>
-      this.sql.begin(async (tx) => {
+      this.db.transaction(async (tx) => {
         const found = await this.lockEvent(tx, id)
         if (Option.isNone(found)) {
           return Result.fail(new NotFound('Event not found'))
@@ -71,9 +73,13 @@ export class PostgresEventRepository implements EventRepository {
         if (updated._tag === 'Failure') {
           return updated
         }
-        const entity = eventToEntity(updated.value)
-        await tx`UPDATE events SET title = ${entity.title}, category = ${entity.category}, starts_at = ${entity.starts_at},
-          capacity = ${entity.capacity}, venue_id = ${entity.venue_id} WHERE id = ${id}`
+        const { title, category, startsAt, capacity, venueId } = eventToEntity(
+          updated.value,
+        )
+        await tx
+          .update(events)
+          .set({ title, category, startsAt, capacity, venueId })
+          .where(eq(events.id, id))
         return updated
       }),
     )
@@ -87,7 +93,7 @@ export class PostgresEventRepository implements EventRepository {
     ) => Result<Reservation, ApplicationError>,
   ): Promise<Result<Reservation, ApplicationError>> {
     return this.write(() =>
-      this.sql.begin(async (tx) => {
+      this.db.transaction(async (tx) => {
         const found = await this.lockEvent(tx, eventId)
         if (Option.isNone(found)) {
           return Result.fail(new NotFound('Event not found'))
@@ -99,20 +105,21 @@ export class PostgresEventRepository implements EventRepository {
         if (result._tag === 'Failure') {
           return result
         }
-        const d = reservationToEntity(result.value)
-        await tx`INSERT INTO reservations (id, event_id, user_id, quantity, created_at)
-          VALUES (${d.id}, ${d.event_id}, ${d.user_id}, ${d.quantity}, ${d.created_at})`
+        await tx
+          .insert(reservations)
+          .values(reservationToRow(reservationToEntity(result.value)))
         return result
       }),
     )
   }
 
   async listReservations(userId: UserId) {
-    const rows = await this.sql.unsafe<Record<string, unknown>[]>(
-      `SELECT ${reservationColumns} FROM reservations WHERE user_id = $1 ORDER BY created_at, id`,
-      [userId],
-    )
-    return rows.map(reservationFromRow)
+    const rows = await this.db
+      .select()
+      .from(reservations)
+      .where(eq(reservations.userId, userId))
+      .orderBy(asc(reservations.createdAt), asc(reservations.id))
+    return rows.map((row) => reservationToDomain(reservationFromRow(row)))
   }
 
   async cancelReservation(
@@ -120,46 +127,68 @@ export class PostgresEventRepository implements EventRepository {
     userId: UserId,
     change: (reservation: Reservation) => Result<Reservation, ApplicationError>,
   ): Promise<Result<Reservation, ApplicationError>> {
-    return this.sql.begin(async (tx) => {
-      const rows = await tx.unsafe<Record<string, unknown>[]>(
-        `SELECT ${reservationColumns} FROM reservations WHERE id = $1 AND user_id = $2 FOR UPDATE`,
-        [id, userId],
-      )
-      const found = Option.fromNullable(rows[0])
+    return this.db.transaction(async (tx) => {
+      const [row] = await tx
+        .select()
+        .from(reservations)
+        .where(and(eq(reservations.id, id), eq(reservations.userId, userId)))
+        .for('update')
+      const found = Option.fromNullable(row)
       if (Option.isNone(found)) {
         return Result.fail(new NotFound('Reservation not found'))
       }
-      const updated = change(reservationFromRow(found.value))
+      const updated = change(
+        reservationToDomain(reservationFromRow(found.value)),
+      )
       if (updated._tag === 'Failure') {
         return updated
       }
-      const entity = reservationToEntity(updated.value)
-      const cancelledAt = Option.isSome(entity.cancelled_at)
-        ? entity.cancelled_at.value
-        : null
-      await tx`UPDATE reservations SET cancelled_at = ${cancelledAt} WHERE id = ${id}`
+      const { cancelledAt } = reservationToRow(
+        reservationToEntity(updated.value),
+      )
+      await tx
+        .update(reservations)
+        .set({ cancelledAt })
+        .where(eq(reservations.id, id))
       return updated
     })
   }
 
   async userExists(id: UserId) {
-    const rows = await this.sql`SELECT id FROM users WHERE id = ${id}`
+    const rows = await this.db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.id, id))
     return rows.length > 0
   }
 
-  private async lockEvent(tx: SQL, id: EventId): Promise<Option<Event>> {
-    const rows = await tx.unsafe<EventEntity[]>(
-      `SELECT ${eventColumns} FROM events WHERE id = $1 FOR UPDATE`,
-      [id],
-    )
-    return Option.map(Option.fromNullable(rows[0]), eventToDomain)
+  private async lockEvent(
+    tx: Transaction,
+    id: EventId,
+  ): Promise<Option<Event>> {
+    const [row] = await tx
+      .select()
+      .from(events)
+      .where(eq(events.id, id))
+      .for('update')
+    return Option.map(Option.fromNullable(row), eventToDomain)
   }
 
-  private async reservedSeats(tx: SQL, eventId: EventId): Promise<number> {
-    const [row] = await tx<
-      { seats: number }[]
-    >`SELECT COALESCE(SUM(quantity), 0)::int AS seats
-      FROM reservations WHERE event_id = ${eventId} AND cancelled_at IS NULL`
+  private async reservedSeats(
+    tx: Transaction,
+    eventId: EventId,
+  ): Promise<number> {
+    const [row] = await tx
+      .select({
+        seats: sql<number>`coalesce(sum(${reservations.quantity}), 0)::int`,
+      })
+      .from(reservations)
+      .where(
+        and(
+          eq(reservations.eventId, eventId),
+          isNull(reservations.cancelledAt),
+        ),
+      )
     return row!.seats
   }
 
@@ -167,7 +196,7 @@ export class PostgresEventRepository implements EventRepository {
     operation: () => Promise<Result<Value, ApplicationError>>,
   ): Promise<Result<Value, ApplicationError>> {
     const result = await Result.tryPromise(operation, (cause) => {
-      if (cause instanceof SQL.PostgresError && cause.code === '23503') {
+      if (isForeignKeyViolation(cause)) {
         return new InvalidInput('Referenced venue or user does not exist')
       }
       // Lost connections, corrupt SQL and driver faults are not business failures.
@@ -175,4 +204,11 @@ export class PostgresEventRepository implements EventRepository {
     })
     return result._tag === 'Failure' ? result : result.value
   }
+}
+
+// Drizzle wraps driver errors in DrizzleQueryError. Bun puts the SQLSTATE in
+// errno; its code holds Bun's own error code.
+function isForeignKeyViolation(error: unknown) {
+  const cause = error instanceof DrizzleQueryError ? error.cause : error
+  return cause instanceof SQL.PostgresError && cause.errno === '23503'
 }
