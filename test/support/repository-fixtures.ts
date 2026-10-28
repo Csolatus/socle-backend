@@ -1,3 +1,5 @@
+import { fileURLToPath } from 'node:url'
+import { migrate } from 'drizzle-orm/bun-sql/migrator'
 import type { EventRepository } from '#/application/ports.ts'
 import { Event } from '#/domain/event.ts'
 import { EventId, UserId, VenueId } from '#/domain/ids.ts'
@@ -44,6 +46,10 @@ export const inMemoryImplementation: RepositoryImplementation = {
   },
 }
 
+const migrationsFolder = fileURLToPath(
+  new URL('../../drizzle', import.meta.url),
+)
+
 export function postgresImplementation(
   url: string | undefined,
 ): RepositoryImplementation {
@@ -52,7 +58,10 @@ export function postgresImplementation(
     name: 'Postgres',
     enabled: url !== undefined,
     async make() {
-      database ??= createDatabase(url!)
+      if (!database) {
+        database = createDatabase(url!)
+        await migrate(database.db, { migrationsFolder })
+      }
       const { sql, db } = database
       const alice = UserId.make()
       const bob = UserId.make()
